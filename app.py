@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.io as pio
 import io
 import xlsxwriter
 
@@ -26,7 +27,7 @@ if st.session_state.reset_all:
         del st.session_state[k]
     st.rerun()
 
-# --- Sidebar: Setup + Reset ---
+# --- Sidebar Setup ---
 with st.sidebar:
     st.header("🛠️ Setup")
     resin_name = st.text_input("Resin Name", key="resin_name")
@@ -78,22 +79,20 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent, entry_coun
                 "Result": status
             })
 
-    # --- Graph ---
     df = pd.DataFrame(data).dropna()
+
     if not df.empty:
         st.subheader("📈 Deviation Graph")
 
         fig = px.line(df, x="Entry #", y="% Deviation", markers=True, title="Deviation of Hardener vs Entry #")
         fig.update_traces(line_color="blue", marker=dict(size=10))
 
-        # Add failed points as red
         failed = df[df["Result"] == "❌"]
         if not failed.empty:
             fig.add_scatter(x=failed["Entry #"], y=failed["% Deviation"],
                             mode="markers", marker=dict(size=12, color="red", line=dict(color="black", width=2)),
                             name="Failed Points")
 
-        # Add tolerance bands
         fig.add_hline(y=tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"+{tolerance_percent}%", annotation_position="top right")
         fig.add_hline(y=-tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"-{tolerance_percent}%", annotation_position="bottom right")
 
@@ -102,36 +101,50 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent, entry_coun
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- Export to Excel (No image embedding for Plotly version) ---
+        # Convert Plotly to image with kaleido
+        img_bytes = pio.to_image(fig, format='png', width=800, height=400)
+        img_buffer = io.BytesIO(img_bytes)
+
+        # --- Export to Excel ---
         st.subheader("📤 Export to Excel")
 
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet("Mixing Report")
 
-        setup_data = [
+        # Setup info
+        setup_info = [
             ["Resin Name", resin_name],
             ["Hardener Name", hardener_name],
             ["Mixing Ratio", f"{resin_ratio}:{hardener_ratio}"],
             ["Tolerance (%)", f"±{tolerance_percent}%"],
             ["Number of Entries", entry_count]
         ]
-        for row_idx, (label, value) in enumerate(setup_data):
-            worksheet.write(row_idx, 0, label)
-            worksheet.write(row_idx, 1, value)
+        for row, (label, val) in enumerate(setup_info):
+            worksheet.write(row, 0, label)
+            worksheet.write(row, 1, val)
 
-        table_start = len(setup_data) + 2
+        # Write data table
+        start_row = len(setup_info) + 2
         for col_idx, col_name in enumerate(df.columns):
-            worksheet.write(table_start, col_idx, col_name)
-        for row_idx, row in enumerate(df.itertuples(index=False), start=table_start + 1):
+            worksheet.write(start_row, col_idx, col_name)
+
+        for row_idx, row in enumerate(df.itertuples(index=False), start=start_row + 1):
             for col_idx, val in enumerate(row):
                 worksheet.write(row_idx, col_idx, val)
+
+        # Insert plotly image
+        worksheet.insert_image(start_row + len(df) + 3, 0, "chart.png", {
+            'image_data': img_buffer,
+            'x_scale': 0.9,
+            'y_scale': 0.9
+        })
 
         workbook.close()
         output.seek(0)
 
         st.download_button(
-            label="📥 Download Excel Report",
+            "📥 Download Excel Report",
             data=output,
             file_name="Mixing_Ratio_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

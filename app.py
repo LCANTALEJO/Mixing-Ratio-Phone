@@ -4,12 +4,32 @@ import plotly.express as px
 import plotly.io as pio
 import io
 import xlsxwriter
+from fpdf import FPDF
+from PIL import Image
 
-# --- App Config ---
-st.set_page_config(page_title="Mixing Ratio Log", layout="centered")
+st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 st.title("🧪 Mixing Ratio Worksheet")
 
-# --- Setup Form ---
+# --- Session Reset Flags ---
+if "reset_all" not in st.session_state:
+    st.session_state.reset_all = False
+if "reset_data" not in st.session_state:
+    st.session_state.reset_data = False
+
+if st.session_state.reset_data:
+    keys_to_keep = {"resin_name", "hardener_name", "hardener_ratio", "tolerance_percent", "entry_count", "reset_all", "reset_data"}
+    for k in list(st.session_state.keys()):
+        if k not in keys_to_keep:
+            del st.session_state[k]
+    st.session_state.reset_data = False
+    st.rerun()
+
+if st.session_state.reset_all:
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
+
+# --- Sidebar Setup ---
 with st.sidebar:
     st.header("🔧 Setup")
     resin_name = st.text_input("Resin Name", key="resin_name")
@@ -18,14 +38,17 @@ with st.sidebar:
     tolerance_percent = st.number_input("Tolerance (%)", min_value=0.1, step=0.1, key="tolerance_percent")
     resin_ratio = 100
 
-# --- Initialize Session State for Entry Log ---
+    st.markdown("---")
+    st.button("🔄 Reset All", on_click=lambda: st.session_state.update(reset_all=True))
+    st.button("♻️ Reset Data Only", on_click=lambda: st.session_state.update(reset_data=True))
+
+# --- Initialize Entry Log ---
 if "entries" not in st.session_state:
     st.session_state.entries = []
 
-# --- Data Entry Section ---
-if resin_name and hardener_name and hardener_ratio > 0 and tolerance_percent > 0:
-    st.subheader("📥 Enter Actual Weights")
-
+# --- Entry Form ---
+if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
+    st.success("✅ Setup complete. Enter weights below.")
     with st.form(key="entry_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -50,73 +73,117 @@ if resin_name and hardener_name and hardener_ratio > 0 and tolerance_percent > 0
             "Result": status
         })
 
-# --- Results Table ---
+# --- Show Table and Graph ---
 if st.session_state.entries:
     df = pd.DataFrame(st.session_state.entries)
     st.subheader("📋 Mixing Log")
     st.dataframe(df, use_container_width=True)
 
-    # --- Plot Graph ---
     st.subheader("📈 Deviation Chart")
-    fig = px.line(df, x="Entry #", y="% Deviation", markers=True, title="Deviation Over Time")
+    fig = px.line(df, x="Entry #", y="% Deviation", markers=True, title="Deviation of Hardener vs Entry #")
     failed = df[df["Result"].str.contains("FAIL")]
     if not failed.empty:
-        fig.add_scatter(
-            x=failed["Entry #"], y=failed["% Deviation"],
-            mode="markers",
-            marker=dict(size=12, color="red", line=dict(color="black", width=2)),
-            name="Failed"
-        )
+        fig.add_scatter(x=failed["Entry #"], y=failed["% Deviation"],
+                        mode="markers",
+                        marker=dict(size=12, color="red", line=dict(color="black", width=2)),
+                        name="Failed")
+
     fig.add_hline(y=tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"+{tolerance_percent}%")
     fig.add_hline(y=-tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"-{tolerance_percent}%")
     fig.update_yaxes(range=[-10, 10])
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Export to Excel ---
-    st.subheader("📤 Download Report")
+    # --- Export Buttons Section ---
     fig_img = pio.to_image(fig, format="png", width=800, height=400)
     fig_io = io.BytesIO(fig_img)
 
-    excel_output = io.BytesIO()
-    workbook = xlsxwriter.Workbook(excel_output, {'in_memory': True})
-    worksheet = workbook.add_worksheet("Mixing Report")
-
-    # Header Info
     setup_info = [
         ["Resin Name", resin_name],
         ["Hardener Name", hardener_name],
         ["Mixing Ratio", f"{resin_ratio}:{hardener_ratio}"],
         ["Tolerance (%)", f"±{tolerance_percent}%"]
     ]
-    for r, (label, value) in enumerate(setup_info):
-        worksheet.write(r, 0, label)
-        worksheet.write(r, 1, value)
 
-    # Data Table
-    start_row = len(setup_info) + 2
-    for c, col_name in enumerate(df.columns):
-        worksheet.write(start_row, c, col_name)
-    for r_idx, row in enumerate(df.itertuples(index=False), start=start_row + 1):
-        for c_idx, value in enumerate(row):
-            worksheet.write(r_idx, c_idx, value)
+    st.subheader("📄 Download Reports")
+    col1, col2 = st.columns(2)
 
-    # Insert Graph Image
-    worksheet.insert_image(start_row + len(df) + 3, 0, "deviation_chart.png", {
-        'image_data': fig_io,
-        'x_scale': 0.9,
-        'y_scale': 0.9
-    })
+    with col1:
+        excel_output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(excel_output, {'in_memory': True})
+        worksheet = workbook.add_worksheet("Mixing Report")
 
-    workbook.close()
-    excel_output.seek(0)
+        for r, (label, value) in enumerate(setup_info):
+            worksheet.write(r, 0, label)
+            worksheet.write(r, 1, value)
 
-    st.download_button(
-        label="📥 Download Excel Report",
-        data=excel_output,
-        file_name="Mixing_Ratio_Report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        start_row = len(setup_info) + 2
+        for c, col_name in enumerate(df.columns):
+            worksheet.write(start_row, c, col_name)
+        for r_idx, row in enumerate(df.itertuples(index=False), start=start_row + 1):
+            for c_idx, value in enumerate(row):
+                worksheet.write(r_idx, c_idx, value)
 
+        worksheet.insert_image(start_row + len(df) + 3, 0, "deviation_chart.png", {
+            'image_data': fig_io,
+            'x_scale': 0.9,
+            'y_scale': 0.9
+        })
+
+        workbook.close()
+        excel_output.seek(0)
+
+        st.download_button(
+            label="📅 Download Excel Report",
+            data=excel_output,
+            file_name="Mixing_Ratio_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    with col2:
+        generate_pdf = st.button("📄 Generate and Download PDF")
+
+    if generate_pdf:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(200, 10, txt="Mixing Ratio Report", ln=True, align="C")
+        pdf.ln(5)
+
+        pdf.set_font("Arial", size=12)
+        for label, value in setup_info:
+            pdf.cell(80, 8, f"{label}:", 0)
+            pdf.cell(100, 8, str(value), 0, ln=True)
+        pdf.ln(5)
+
+        col_width = 40
+        row_height = 8
+        pdf.set_font("Arial", "B", 12)
+        for col in df.columns:
+            pdf.cell(col_width, row_height, col, border=1)
+        pdf.ln(row_height)
+
+        pdf.set_font("Arial", "", 12)
+        for row in df.itertuples(index=False):
+            for item in row:
+                pdf.cell(col_width, row_height, str(item), border=1)
+            pdf.ln(row_height)
+
+        img = Image.open(io.BytesIO(fig_img))
+        img_path = "plot_temp.png"
+        img.save(img_path)
+        pdf.ln(5)
+        pdf.image(img_path, x=10, w=190)
+
+        pdf_output = io.BytesIO()
+        pdf.output(pdf_output)
+        pdf_output.seek(0)
+
+        st.download_button(
+            label="📅 Download PDF Report",
+            data=pdf_output,
+            file_name="Mixing_Ratio_Report.pdf",
+            mime="application/pdf"
+        )
 else:
     st.info("No entries yet. Enter data above and press 'Next ➕'.")
-

@@ -10,74 +10,68 @@ from PIL import Image
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 st.title("🧪 Mixing Ratio Worksheet")
 
-# --- Initialize Session State ---
-if "entries" not in st.session_state:
-    st.session_state.entries = []
-if "new_entry" not in st.session_state:
-    st.session_state.new_entry = False
+# --- Session Reset Flags ---
+if "reset_all" not in st.session_state:
+    st.session_state.reset_all = False
+if "reset_data" not in st.session_state:
+    st.session_state.reset_data = False
+
+if st.session_state.reset_data:
+    keys_to_keep = {"resin_name", "hardener_name", "hardener_ratio", "tolerance_percent", "entry_count", "reset_all", "reset_data"}
+    for k in list(st.session_state.keys()):
+        if k not in keys_to_keep:
+            del st.session_state[k]
+    st.session_state.reset_data = False
+    st.rerun()
+
+if st.session_state.reset_all:
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
 
 # --- Sidebar Setup ---
 with st.sidebar:
     st.header("🔧 Setup")
-    resin_name = st.text_input("Resin Name")
-    hardener_name = st.text_input("Hardener Name")
-    hardener_ratio_input = st.text_input("Hardener Ratio (e.g., 30)")
-    tolerance_percent_input = st.text_input("Tolerance (%) (e.g., 3)")
-
+    resin_name = st.text_input("Resin Name", key="resin_name")
+    hardener_name = st.text_input("Hardener Name", key="hardener_name")
+    hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=1.0, step=0.1, key="hardener_ratio")
+    tolerance_percent = st.number_input("Tolerance (%)", min_value=0.1, step=0.1, key="tolerance_percent")
     resin_ratio = 100
 
     st.markdown("---")
-    if st.button("🔄 Reset All"):
-        st.session_state.entries = []
-        st.session_state.new_entry = False
-        st.experimental_rerun()
+    st.button("🔄 Reset All", on_click=lambda: st.session_state.update(reset_all=True))
+    st.button("♻️ Reset Data Only", on_click=lambda: st.session_state.update(reset_data=True))
 
-# --- Validate Setup Before Proceeding ---
-setup_complete = False
-if resin_name and hardener_name and hardener_ratio_input and tolerance_percent_input:
-    try:
-        hardener_ratio = float(hardener_ratio_input)
-        tolerance_percent = float(tolerance_percent_input)
-        setup_complete = True
-    except ValueError:
-        st.error("Please enter valid numeric values for Hardener Ratio and Tolerance %.")
+# --- Initialize Entry Log ---
+if "entries" not in st.session_state:
+    st.session_state.entries = []
 
 # --- Entry Form ---
-if setup_complete:
+if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
     st.success("✅ Setup complete. Enter weights below.")
-    
-    with st.form(key="entry_form"):
-        # Use random keys for input fields so they clear after every form submit
-        resin_weight_input = st.text_input("Resin Weight (g)", key=f"resin_input_{len(st.session_state.entries)}")
-        hardener_weight_input = st.text_input("Hardener Weight (g)", key=f"hardener_input_{len(st.session_state.entries)}")
+    with st.form(key="entry_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, step=0.1, key="input_resin")
+        with col2:
+            hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, step=0.1, key="input_hardener")
         submitted = st.form_submit_button("Next ➕")
 
-    if submitted:
-        try:
-            resin_weight = float(resin_weight_input)
-            hardener_weight = float(hardener_weight_input)
-            if resin_weight > 0 and hardener_weight > 0:
-                ideal = (resin_weight / resin_ratio) * hardener_ratio
-                tol = ideal * (tolerance_percent / 100)
-                min_acc = ideal - tol
-                max_acc = ideal + tol
-                deviation = ((hardener_weight - ideal) / ideal) * 100
-                status = "✅ PASS" if min_acc <= hardener_weight <= max_acc else "❌ FAIL"
+    if submitted and resin_weight > 0 and hardener_weight > 0:
+        ideal = (resin_weight / resin_ratio) * hardener_ratio
+        tol = ideal * (tolerance_percent / 100)
+        min_acc = ideal - tol
+        max_acc = ideal + tol
+        deviation = ((hardener_weight - ideal) / ideal) * 100
+        status = "✅ PASS" if min_acc <= hardener_weight <= max_acc else "❌ FAIL"
 
-                st.session_state.entries.append({
-                    "Entry #": len(st.session_state.entries) + 1,
-                    f"{resin_name} (g)": resin_weight,
-                    f"{hardener_name} (g)": hardener_weight,
-                    "% Deviation": round(deviation, 2),
-                    "Result": status
-                })
-
-                st.success("✅ Entry added!")
-                st.session_state.new_entry = True
-            else:
-                st.error("Resin and Hardener weights must be greater than 0.")
-        except ValueError:
-            st.error("Please enter valid numeric values for Resin and Hardener Weights.")
+        st.session_state.entries.append({
+            "Entry #": len(st.session_state.entries) + 1,
+            f"{resin_name} (g)": resin_weight,
+            f"{hardener_name} (g)": hardener_weight,
+            "% Deviation": round(deviation, 2),
+            "Result": status
+        })
 
 # --- Show Table and Graph ---
 if st.session_state.entries:
@@ -146,47 +140,49 @@ if st.session_state.entries:
         )
 
     with col2:
-        if st.button("📄 Generate and Download PDF"):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
-            pdf.set_font("DejaVu", size=14)
-            pdf.cell(200, 10, txt="🧪 Mixing Ratio Report", ln=True, align="C")
-            pdf.ln(5)
+        generate_pdf = st.button("📄 Generate and Download PDF")
 
-            pdf.set_font("DejaVu", size=12)
-            for label, value in setup_info:
-                pdf.cell(80, 8, f"{label}:", 0)
-                pdf.cell(100, 8, str(value), 0, ln=True)
-            pdf.ln(5)
+    if generate_pdf:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
+        pdf.set_font("DejaVu", size=14)
+        pdf.cell(200, 10, txt="🧪 Mixing Ratio Report", ln=True, align="C")
+        pdf.ln(5)
 
-            col_width = 40
-            row_height = 8
-            for col in df.columns:
-                pdf.cell(col_width, row_height, str(col), border=1)
+        pdf.set_font("DejaVu", size=12)
+        for label, value in setup_info:
+            pdf.cell(80, 8, f"{label}:", 0)
+            pdf.cell(100, 8, str(value), 0, ln=True)
+        pdf.ln(5)
+
+        col_width = 40
+        row_height = 8
+        for col in df.columns:
+            pdf.cell(col_width, row_height, str(col), border=1)
+        pdf.ln(row_height)
+
+        for row in df.itertuples(index=False):
+            for item in row:
+                pdf.cell(col_width, row_height, str(item), border=1)
             pdf.ln(row_height)
 
-            for row in df.itertuples(index=False):
-                for item in row:
-                    pdf.cell(col_width, row_height, str(item), border=1)
-                pdf.ln(row_height)
+        img = Image.open(io.BytesIO(fig_img))
+        img_path = "plot_temp.png"
+        img.save(img_path)
+        pdf.ln(5)
+        pdf.image(img_path, x=10, w=190)
 
-            img = Image.open(io.BytesIO(fig_img))
-            img_path = "plot_temp.png"
-            img.save(img_path)
-            pdf.ln(5)
-            pdf.image(img_path, x=10, w=190)
+        pdf_output = io.BytesIO()
+        pdf.output(pdf_output)
+        pdf_output.seek(0)
 
-            pdf_output = io.BytesIO()
-            pdf.output(pdf_output)
-            pdf_output.seek(0)
+        st.download_button(
+            label="📥 Download PDF Report",
+            data=pdf_output,
+            file_name="Mixing_Ratio_Report.pdf",
+            mime="application/pdf"
+        )
 
-            st.download_button(
-                label="📥 Download PDF Report",
-                data=pdf_output,
-                file_name="Mixing_Ratio_Report.pdf",
-                mime="application/pdf"
-            )
 else:
     st.info("No entries yet. Enter data above and press 'Next ➕'.")
-

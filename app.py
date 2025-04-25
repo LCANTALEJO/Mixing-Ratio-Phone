@@ -32,10 +32,10 @@ if st.session_state.reset_all:
 # --- Sidebar Setup ---
 with st.sidebar:
     st.header("🔧 Setup")
-    resin_name = st.text_input("Resin Name", key="resin_name")
-    hardener_name = st.text_input("Hardener Name", key="hardener_name")
-    hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=1.0, step=0.1, key="hardener_ratio")
-    tolerance_percent = st.number_input("Tolerance (%)", min_value=0.1, step=0.1, key="tolerance_percent")
+    resin_name = st.text_input("Resin Name", key="resin_name", placeholder="Enter Resin Name...")
+    hardener_name = st.text_input("Hardener Name", key="hardener_name", placeholder="Enter Hardener Name...")
+    hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=0.0, format="%.2f", key="hardener_ratio", placeholder="e.g., 30")
+    tolerance_percent = st.number_input("Tolerance (%)", min_value=0.0, format="%.2f", key="tolerance_percent", placeholder="e.g., 3")
     resin_ratio = 100
 
     st.markdown("---")
@@ -47,14 +47,14 @@ if "entries" not in st.session_state:
     st.session_state.entries = []
 
 # --- Entry Form ---
-if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
+if resin_name and hardener_name and hardener_ratio > 0 and tolerance_percent > 0:
     st.success("✅ Setup complete. Enter weights below.")
     with st.form(key="entry_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, step=0.1, key="input_resin")
+            resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, format="%.2f", key="input_resin", placeholder="Input Resin Weight")
         with col2:
-            hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, step=0.1, key="input_hardener")
+            hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, format="%.2f", key="input_hardener", placeholder="Input Hardener Weight")
         submitted = st.form_submit_button("Next ➕")
 
     if submitted and resin_weight > 0 and hardener_weight > 0:
@@ -72,6 +72,10 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
             "% Deviation": round(deviation, 2),
             "Result": status
         })
+
+        # 🧹 Reset input fields to blank after entry
+        st.session_state["input_resin"] = 0.0
+        st.session_state["input_hardener"] = 0.0
 
 # --- Show Table and Graph ---
 if st.session_state.entries:

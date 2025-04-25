@@ -6,6 +6,7 @@ import io
 import xlsxwriter
 from fpdf import FPDF
 from PIL import Image
+import random
 
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 st.title("🧪 Mixing Ratio Worksheet")
@@ -13,8 +14,6 @@ st.title("🧪 Mixing Ratio Worksheet")
 # --- Initialize Data Store ---
 if "entries" not in st.session_state:
     st.session_state.entries = []
-if "submitted_success" not in st.session_state:
-    st.session_state.submitted_success = False
 
 # --- Sidebar Setup ---
 with st.sidebar:
@@ -44,7 +43,9 @@ if resin_name and hardener_name and hardener_ratio_input and tolerance_percent_i
 # --- Entry Form ---
 if setup_complete:
     st.success("✅ Setup complete. Enter weights below.")
-    with st.form(key="entry_form"):
+
+    form_key = f"entry_form_{random.randint(1, 1000000)}"
+    with st.form(key=form_key):
         resin_weight_input = st.text_input("Resin Weight (g)")
         hardener_weight_input = st.text_input("Hardener Weight (g)")
         submitted = st.form_submit_button("Next ➕")
@@ -69,16 +70,11 @@ if setup_complete:
                     "Result": status
                 })
 
-                st.session_state.submitted_success = True  # 🔥 Flag set
+                st.success("✅ Entry added!")
             else:
                 st.error("Resin and Hardener weights must be greater than 0.")
         except ValueError:
             st.error("Please enter valid numeric values for Resin and Hardener Weights.")
-
-# --- After form: Safe rerun to reset fields ---
-if st.session_state.submitted_success:
-    st.session_state.submitted_success = False
-    st.experimental_rerun()
 
 # --- Show Table and Graph ---
 if st.session_state.entries:
@@ -125,69 +121,4 @@ if st.session_state.entries:
 
         start_row = len(setup_info) + 2
         for c, col_name in enumerate(df.columns):
-            worksheet.write(start_row, c, col_name)
-        for r_idx, row in enumerate(df.itertuples(index=False), start=start_row + 1):
-            for c_idx, value in enumerate(row):
-                worksheet.write(r_idx, c_idx, value)
-
-        worksheet.insert_image(start_row + len(df) + 3, 0, "deviation_chart.png", {
-            'image_data': fig_io,
-            'x_scale': 0.9,
-            'y_scale': 0.9
-        })
-
-        workbook.close()
-        excel_output.seek(0)
-
-        st.download_button(
-            label="📥 Download Excel Report",
-            data=excel_output,
-            file_name="Mixing_Ratio_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    with col2:
-        if st.button("📄 Generate and Download PDF"):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
-            pdf.set_font("DejaVu", size=14)
-            pdf.cell(200, 10, txt="🧪 Mixing Ratio Report", ln=True, align="C")
-            pdf.ln(5)
-
-            pdf.set_font("DejaVu", size=12)
-            for label, value in setup_info:
-                pdf.cell(80, 8, f"{label}:", 0)
-                pdf.cell(100, 8, str(value), 0, ln=True)
-            pdf.ln(5)
-
-            col_width = 40
-            row_height = 8
-            for col in df.columns:
-                pdf.cell(col_width, row_height, str(col), border=1)
-            pdf.ln(row_height)
-
-            for row in df.itertuples(index=False):
-                for item in row:
-                    pdf.cell(col_width, row_height, str(item), border=1)
-                pdf.ln(row_height)
-
-            img = Image.open(io.BytesIO(fig_img))
-            img_path = "plot_temp.png"
-            img.save(img_path)
-            pdf.ln(5)
-            pdf.image(img_path, x=10, w=190)
-
-            pdf_output = io.BytesIO()
-            pdf.output(pdf_output)
-            pdf_output.seek(0)
-
-            st.download_button(
-                label="📥 Download PDF Report",
-                data=pdf_output,
-                file_name="Mixing_Ratio_Report.pdf",
-                mime="application/pdf"
-            )
-else:
-    st.info("No entries yet. Enter data above and press 'Next ➕'.")
-
+            worksheet.write

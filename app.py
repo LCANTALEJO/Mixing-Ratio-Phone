@@ -10,7 +10,7 @@ from PIL import Image
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 st.title("🧪 Mixing Ratio Worksheet")
 
-# --- Initialize Session State ---
+# --- Initialize Data Store ---
 if "entries" not in st.session_state:
     st.session_state.entries = []
 
@@ -19,8 +19,8 @@ with st.sidebar:
     st.header("🔧 Setup")
     resin_name = st.text_input("Resin Name")
     hardener_name = st.text_input("Hardener Name")
-    hardener_ratio = st.text_input("Hardener Ratio (e.g., 30)")
-    tolerance_percent = st.text_input("Tolerance (%) (e.g., 3)")
+    hardener_ratio_input = st.text_input("Hardener Ratio (e.g., 30)")
+    tolerance_percent_input = st.text_input("Tolerance (%) (e.g., 3)")
 
     resin_ratio = 100
 
@@ -31,10 +31,10 @@ with st.sidebar:
 
 # --- Validate Setup Before Proceeding ---
 setup_complete = False
-if resin_name and hardener_name and hardener_ratio and tolerance_percent:
+if resin_name and hardener_name and hardener_ratio_input and tolerance_percent_input:
     try:
-        hardener_ratio = float(hardener_ratio)
-        tolerance_percent = float(tolerance_percent)
+        hardener_ratio = float(hardener_ratio_input)
+        tolerance_percent = float(tolerance_percent_input)
         setup_complete = True
     except ValueError:
         st.error("Please enter valid numeric values for Hardener Ratio and Tolerance %.")
@@ -43,14 +43,14 @@ if resin_name and hardener_name and hardener_ratio and tolerance_percent:
 if setup_complete:
     st.success("✅ Setup complete. Enter weights below.")
     with st.form(key="entry_form"):
-        resin_weight = st.text_input("Resin Weight (g)")
-        hardener_weight = st.text_input("Hardener Weight (g)")
+        resin_weight_input = st.text_input("Resin Weight (g)")
+        hardener_weight_input = st.text_input("Hardener Weight (g)")
         submitted = st.form_submit_button("Next ➕")
 
     if submitted:
         try:
-            resin_weight = float(resin_weight)
-            hardener_weight = float(hardener_weight)
+            resin_weight = float(resin_weight_input)
+            hardener_weight = float(hardener_weight_input)
             if resin_weight > 0 and hardener_weight > 0:
                 ideal = (resin_weight / resin_ratio) * hardener_ratio
                 tol = ideal * (tolerance_percent / 100)
@@ -72,7 +72,7 @@ if setup_complete:
             else:
                 st.error("Resin and Hardener weights must be greater than 0.")
         except ValueError:
-            st.error("Please enter valid numeric values for weights.")
+            st.error("Please enter valid numeric values for Resin and Hardener Weights.")
 
 # --- Show Table and Graph ---
 if st.session_state.entries:
@@ -89,8 +89,8 @@ if st.session_state.entries:
                         marker=dict(size=12, color="red", line=dict(color="black", width=2)),
                         name="Failed")
 
-    fig.add_hline(y=float(tolerance_percent), line_dash="dash", line_color="green", annotation_text=f"+{tolerance_percent}%")
-    fig.add_hline(y=-float(tolerance_percent), line_dash="dash", line_color="green", annotation_text=f"-{tolerance_percent}%")
+    fig.add_hline(y=tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"+{tolerance_percent}%")
+    fig.add_hline(y=-tolerance_percent, line_dash="dash", line_color="green", annotation_text=f"-{tolerance_percent}%")
     fig.update_yaxes(range=[-10, 10])
     st.plotly_chart(fig, use_container_width=True)
 

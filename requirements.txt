@@ -3,8 +3,5 @@ pandas
 plotly
 xlsxwriter
 kaleido
-fpdf
+fpdf2
 Pillow
-
-
-

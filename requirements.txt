@@ -5,4 +5,3 @@ xlsxwriter
 kaleido
 fpdf2
 Pillow
-

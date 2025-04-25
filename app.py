@@ -67,8 +67,7 @@ if setup_complete:
                     "Result": status
                 })
 
-                st.success("✅ Entry added!")
-                st.experimental_rerun()
+                st.success("✅ Entry added!")  # No rerun needed!
             else:
                 st.error("Resin and Hardener weights must be greater than 0.")
         except ValueError:

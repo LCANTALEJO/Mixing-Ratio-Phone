@@ -13,6 +13,8 @@ st.title("🧪 Mixing Ratio Worksheet")
 # --- Initialize Data Store ---
 if "entries" not in st.session_state:
     st.session_state.entries = []
+if "submitted_success" not in st.session_state:
+    st.session_state.submitted_success = False
 
 # --- Sidebar Setup ---
 with st.sidebar:
@@ -67,11 +69,16 @@ if setup_complete:
                     "Result": status
                 })
 
-                st.success("✅ Entry added!")  # No rerun needed!
+                st.session_state.submitted_success = True  # 🔥 Flag set
             else:
                 st.error("Resin and Hardener weights must be greater than 0.")
         except ValueError:
             st.error("Please enter valid numeric values for Resin and Hardener Weights.")
+
+# --- After form: Safe rerun to reset fields ---
+if st.session_state.submitted_success:
+    st.session_state.submitted_success = False
+    st.experimental_rerun()
 
 # --- Show Table and Graph ---
 if st.session_state.entries:

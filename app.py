@@ -8,7 +8,7 @@ from fpdf import FPDF
 from PIL import Image
 
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
-st.title("🧪 Mixing Ratio Worksheet")
+st.title("\U0001f9ea Mixing Ratio Worksheet")
 
 # --- Session Reset Flags ---
 if "reset_all" not in st.session_state:
@@ -31,7 +31,7 @@ if st.session_state.reset_all:
 
 # --- Sidebar Setup ---
 with st.sidebar:
-    st.header("🔧 Setup")
+    st.header("\U0001f527 Setup")
     resin_name = st.text_input("Resin Name", key="resin_name")
     hardener_name = st.text_input("Hardener Name", key="hardener_name")
     hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=1.0, step=0.1, key="hardener_ratio")
@@ -39,8 +39,8 @@ with st.sidebar:
     resin_ratio = 100
 
     st.markdown("---")
-    st.button("🔄 Reset All", on_click=lambda: st.session_state.update(reset_all=True))
-    st.button("♻️ Reset Data Only", on_click=lambda: st.session_state.update(reset_data=True))
+    st.button("\U0001f504 Reset All", on_click=lambda: st.session_state.update(reset_all=True))
+    st.button("\u267b\ufe0f Reset Data Only", on_click=lambda: st.session_state.update(reset_data=True))
 
 # --- Initialize Entry Log ---
 if "entries" not in st.session_state:
@@ -48,14 +48,14 @@ if "entries" not in st.session_state:
 
 # --- Entry Form ---
 if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
-    st.success("✅ Setup complete. Enter weights below.")
+    st.success("\u2705 Setup complete. Enter weights below.")
     with st.form(key="entry_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
             resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, step=0.1, key="input_resin")
         with col2:
             hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, step=0.1, key="input_hardener")
-        submitted = st.form_submit_button("Next ➕")
+        submitted = st.form_submit_button("Next \u2795")
 
     if submitted and resin_weight > 0 and hardener_weight > 0:
         ideal = (resin_weight / resin_ratio) * hardener_ratio
@@ -63,7 +63,7 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
         min_acc = ideal - tol
         max_acc = ideal + tol
         deviation = ((hardener_weight - ideal) / ideal) * 100
-        status = "✅ PASS" if min_acc <= hardener_weight <= max_acc else "❌ FAIL"
+        status = "\u2705 PASS" if min_acc <= hardener_weight <= max_acc else "\u274c FAIL"
 
         st.session_state.entries.append({
             "Entry #": len(st.session_state.entries) + 1,
@@ -76,10 +76,10 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
 # --- Show Table and Graph ---
 if st.session_state.entries:
     df = pd.DataFrame(st.session_state.entries)
-    st.subheader("📋 Mixing Log")
+    st.subheader("\ud83d\udccb Mixing Log")
     st.dataframe(df, use_container_width=True)
 
-    st.subheader("📈 Deviation Chart")
+    st.subheader("\ud83d\udcc8 Deviation Chart")
     fig = px.line(df, x="Entry #", y="% Deviation", markers=True, title="Deviation of Hardener vs Entry #")
     failed = df[df["Result"].str.contains("FAIL")]
     if not failed.empty:
@@ -104,7 +104,7 @@ if st.session_state.entries:
         ["Tolerance (%)", f"±{tolerance_percent}%"]
     ]
 
-    st.subheader("📄 Download Reports")
+    st.subheader("\ud83d\udcc4 Download Reports")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -133,24 +133,24 @@ if st.session_state.entries:
         excel_output.seek(0)
 
         st.download_button(
-            label="📅 Download Excel Report",
+            label="\ud83d\udcc5 Download Excel Report",
             data=excel_output,
             file_name="Mixing_Ratio_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
     with col2:
-        generate_pdf = st.button("📄 Generate and Download PDF")
+        generate_pdf = st.button("\ud83d\udcc4 Generate and Download PDF")
 
     if generate_pdf:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(200, 10, txt="Mixing Ratio Report", ln=True, align="C")
+        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
+        pdf.set_font("DejaVu", size=14)
+        pdf.cell(200, 10, txt="\U0001f9ea Mixing Ratio Report", ln=True, align="C")
         pdf.ln(5)
 
-        pdf.set_font("Arial", size=12)
+        pdf.set_font("DejaVu", size=12)
         for label, value in setup_info:
             pdf.cell(80, 8, f"{label}:", 0)
             pdf.cell(100, 8, str(value), 0, ln=True)
@@ -158,12 +158,10 @@ if st.session_state.entries:
 
         col_width = 40
         row_height = 8
-        pdf.set_font("Arial", "B", 12)
         for col in df.columns:
-            pdf.cell(col_width, row_height, col, border=1)
+            pdf.cell(col_width, row_height, str(col), border=1)
         pdf.ln(row_height)
 
-        pdf.set_font("Arial", "", 12)
         for row in df.itertuples(index=False):
             for item in row:
                 pdf.cell(col_width, row_height, str(item), border=1)
@@ -180,10 +178,10 @@ if st.session_state.entries:
         pdf_output.seek(0)
 
         st.download_button(
-            label="📅 Download PDF Report",
+            label="\ud83d\udcc5 Download PDF Report",
             data=pdf_output,
             file_name="Mixing_Ratio_Report.pdf",
             mime="application/pdf"
         )
 else:
-    st.info("No entries yet. Enter data above and press 'Next ➕'.")
+    st.info("No entries yet. Enter data above and press 'Next \u2795'.")

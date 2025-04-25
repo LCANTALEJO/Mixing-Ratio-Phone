@@ -4,8 +4,6 @@ import plotly.express as px
 import plotly.io as pio
 import io
 import xlsxwriter
-from fpdf import FPDF
-from PIL import Image
 
 # --- App Config ---
 st.set_page_config(page_title="Mixing Ratio Log", layout="centered")
@@ -118,60 +116,7 @@ if st.session_state.entries:
         file_name="Mixing_Ratio_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-# --- PDF Export Section ---
-st.subheader("🖨️ Export as PDF")
 
-if st.button("📄 Download PDF Report"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    # Title
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, txt="Mixing Ratio Report", ln=True, align="C")
-    pdf.ln(5)
-
-    # Setup Info
-    pdf.set_font("Arial", size=12)
-    for label, value in setup_info:
-        pdf.cell(80, 8, f"{label}:", 0)
-        pdf.cell(100, 8, str(value), 0, ln=True)
-    pdf.ln(5)
-
-    # Table Headers
-    col_width = 40
-    row_height = 8
-    pdf.set_font("Arial", "B", 12)
-    for col in df.columns:
-        pdf.cell(col_width, row_height, col, border=1)
-    pdf.ln(row_height)
-
-    # Table Rows
-    pdf.set_font("Arial", "", 12)
-    for row in df.itertuples(index=False):
-        for item in row:
-            pdf.cell(col_width, row_height, str(item), border=1)
-        pdf.ln(row_height)
-
-    # Add Chart Image
-    # Convert to temporary PIL image
-    image = Image.open(io.BytesIO(fig_img))
-    image_path = "plot_temp.png"
-    image.save(image_path)
-    pdf.ln(5)
-    pdf.image(image_path, x=10, w=190)
-
-    # Save to memory and send to user
-    pdf_output = io.BytesIO()
-    pdf.output(pdf_output)
-    pdf_output.seek(0)
-
-    st.download_button(
-        label="📥 Download PDF Report",
-        data=pdf_output,
-        file_name="Mixing_Ratio_Report.pdf",
-        mime="application/pdf"
-    )
 else:
     st.info("No entries yet. Enter data above and press 'Next ➕'.")
 

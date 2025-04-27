@@ -6,16 +6,23 @@ import io
 import xlsxwriter
 from fpdf import FPDF
 from PIL import Image
+import time
 
 # --- Page Setup ---
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 
-# --- Splash Screen ---
+# --- Splash Screen with Loading Animation ---
 if "splash_shown" not in st.session_state:
-    st.image("MR Splash Screen.png", use_container_width=True)
-    if st.button("👉 Enter App"):
-        st.session_state.splash_shown = True
-    st.stop()
+    splash = st.empty()
+    splash.image("MR Splash Screen.png", use_container_width=True)
+
+    loading_text = st.empty()
+    for i in range(6):  # 6 x 0.5s = 3 seconds
+        loading_text.markdown(f"<h4 style='text-align: center;'>Loading{'.' * (i % 4)}</h4>", unsafe_allow_html=True)
+        time.sleep(0.5)
+
+    st.session_state.splash_shown = True
+    st.experimental_rerun()
 
 # --- App Title ---
 st.title("🧪 Mixing Ratio Worksheet")
@@ -150,49 +157,46 @@ if st.session_state.entries:
         )
 
     with col2:
-        generate_pdf = st.button("📄 Generate and Download PDF")
+        if st.button("📄 Generate and Download PDF"):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
+            pdf.set_font("DejaVu", size=14)
+            pdf.cell(200, 10, txt="🧪 Mixing Ratio Report", ln=True, align="C")
+            pdf.ln(5)
 
-    if generate_pdf:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
-        pdf.set_font("DejaVu", size=14)
-        pdf.cell(200, 10, txt="🧪 Mixing Ratio Report", ln=True, align="C")
-        pdf.ln(5)
+            pdf.set_font("DejaVu", size=12)
+            for label, value in setup_info:
+                pdf.cell(80, 8, f"{label}:", 0)
+                pdf.cell(100, 8, str(value), 0, ln=True)
+            pdf.ln(5)
 
-        pdf.set_font("DejaVu", size=12)
-        for label, value in setup_info:
-            pdf.cell(80, 8, f"{label}:", 0)
-            pdf.cell(100, 8, str(value), 0, ln=True)
-        pdf.ln(5)
-
-        col_width = 40
-        row_height = 8
-        for col in df.columns:
-            pdf.cell(col_width, row_height, str(col), border=1)
-        pdf.ln(row_height)
-
-        for row in df.itertuples(index=False):
-            for item in row:
-                pdf.cell(col_width, row_height, str(item), border=1)
+            col_width = 40
+            row_height = 8
+            for col in df.columns:
+                pdf.cell(col_width, row_height, str(col), border=1)
             pdf.ln(row_height)
 
-        img = Image.open(io.BytesIO(fig_img))
-        img_path = "plot_temp.png"
-        img.save(img_path)
-        pdf.ln(5)
-        pdf.image(img_path, x=10, w=190)
+            for row in df.itertuples(index=False):
+                for item in row:
+                    pdf.cell(col_width, row_height, str(item), border=1)
+                pdf.ln(row_height)
 
-        pdf_output = io.BytesIO()
-        pdf.output(pdf_output)
-        pdf_output.seek(0)
+            img = Image.open(io.BytesIO(fig_img))
+            img_path = "plot_temp.png"
+            img.save(img_path)
+            pdf.ln(5)
+            pdf.image(img_path, x=10, w=190)
 
-        st.download_button(
-            label="📥 Download PDF Report",
-            data=pdf_output,
-            file_name="Mixing_Ratio_Report.pdf",
-            mime="application/pdf"
-        )
+            pdf_output = io.BytesIO()
+            pdf.output(pdf_output)
+            pdf_output.seek(0)
 
+            st.download_button(
+                label="📥 Download PDF Report",
+                data=pdf_output,
+                file_name="Mixing_Ratio_Report.pdf",
+                mime="application/pdf"
+            )
 else:
     st.info("No entries yet. Enter data above and press 'Next ➕'.")

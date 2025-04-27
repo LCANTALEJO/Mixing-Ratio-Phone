@@ -30,41 +30,18 @@ if not st.session_state.splash_shown:
 # --- App Title ---
 st.title("🧪 Mixing Ratio Worksheet")
 
-# --- Session Reset Flags ---
-if "reset_all" not in st.session_state:
-    st.session_state.reset_all = False
-if "reset_data" not in st.session_state:
-    st.session_state.reset_data = False
-
-if st.session_state.reset_data:
-    keys_to_keep = {"resin_name", "hardener_name", "hardener_ratio", "tolerance_percent", "entry_count", "reset_all", "reset_data", "splash_shown"}
-    for k in list(st.session_state.keys()):
-        if k not in keys_to_keep:
-            del st.session_state[k]
-    st.session_state.reset_data = False
-    st.rerun()
-
-if st.session_state.reset_all:
-    for k in list(st.session_state.keys()):
-        del st.session_state[k]
-    st.rerun()
-
-# --- Sidebar Setup ---
-with st.sidebar:
-    st.header("🔧 Setup")
-    resin_name = st.text_input("Resin Name", key="resin_name")
-    hardener_name = st.text_input("Hardener Name", key="hardener_name")
-    hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=1.0, step=0.1, key="hardener_ratio")
-    tolerance_percent = st.number_input("Tolerance (%)", min_value=0.1, step=0.1, key="tolerance_percent")
-    resin_ratio = 100
-
-    st.markdown("---")
-    st.button("🔄 Reset All", on_click=lambda: st.session_state.update(reset_all=True))
-    st.button("♻️ Reset Data Only", on_click=lambda: st.session_state.update(reset_data=True))
-
 # --- Initialize Entry Log ---
 if "entries" not in st.session_state:
     st.session_state.entries = []
+
+# --- Sidebar Setup (no reset buttons anymore) ---
+with st.sidebar:
+    st.header("🔧 Setup")
+    resin_name = st.text_input("Resin Name")
+    hardener_name = st.text_input("Hardener Name")
+    hardener_ratio = st.number_input("Hardener Ratio (e.g. 30)", min_value=1.0, step=0.1)
+    tolerance_percent = st.number_input("Tolerance (%)", min_value=0.1, step=0.1)
+    resin_ratio = 100
 
 # --- Entry Form ---
 if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
@@ -72,9 +49,9 @@ if all([resin_name, hardener_name, hardener_ratio, tolerance_percent]):
     with st.form(key="entry_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, step=0.1, key="input_resin")
+            resin_weight = st.number_input("Resin Weight (g)", min_value=0.0, step=0.1)
         with col2:
-            hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, step=0.1, key="input_hardener")
+            hardener_weight = st.number_input("Hardener Weight (g)", min_value=0.0, step=0.1)
         submitted = st.form_submit_button("Next ➕")
 
     if submitted and resin_weight > 0 and hardener_weight > 0:

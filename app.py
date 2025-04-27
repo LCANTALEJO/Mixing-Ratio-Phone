@@ -12,7 +12,7 @@ st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 
 # --- Splash Screen ---
 if "splash_shown" not in st.session_state:
-    st.image("MR Splash Screen.png", use_column_width=True)
+    st.image("MR Splash Screen.png", use_container_width=True)
     if st.button("👉 Enter App"):
         st.session_state.splash_shown = True
     st.stop()

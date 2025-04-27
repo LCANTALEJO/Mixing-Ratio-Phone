@@ -7,7 +7,17 @@ import xlsxwriter
 from fpdf import FPDF
 from PIL import Image
 
+# --- Page Setup ---
 st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
+
+# --- Splash Screen ---
+if "splash_shown" not in st.session_state:
+    st.image("MR Splash Screen.png", use_column_width=True)
+    if st.button("👉 Enter App"):
+        st.session_state.splash_shown = True
+    st.stop()
+
+# --- App Title ---
 st.title("🧪 Mixing Ratio Worksheet")
 
 # --- Session Reset Flags ---
@@ -17,7 +27,7 @@ if "reset_data" not in st.session_state:
     st.session_state.reset_data = False
 
 if st.session_state.reset_data:
-    keys_to_keep = {"resin_name", "hardener_name", "hardener_ratio", "tolerance_percent", "entry_count", "reset_all", "reset_data"}
+    keys_to_keep = {"resin_name", "hardener_name", "hardener_ratio", "tolerance_percent", "entry_count", "reset_all", "reset_data", "splash_shown"}
     for k in list(st.session_state.keys()):
         if k not in keys_to_keep:
             del st.session_state[k]

@@ -13,6 +13,9 @@ st.set_page_config(page_title="Mixing Ratio Worksheet", layout="centered")
 
 # --- Splash Screen with Loading Animation ---
 if "splash_shown" not in st.session_state:
+    st.session_state.splash_shown = False
+
+if not st.session_state.splash_shown:
     splash = st.empty()
     splash.image("MR Splash Screen.png", use_container_width=True)
 
@@ -22,7 +25,7 @@ if "splash_shown" not in st.session_state:
         time.sleep(0.5)
 
     st.session_state.splash_shown = True
-    st.experimental_rerun()
+    st.rerun()
 
 # --- App Title ---
 st.title("🧪 Mixing Ratio Worksheet")
